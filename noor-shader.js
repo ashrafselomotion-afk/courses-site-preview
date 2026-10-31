@@ -1,6 +1,6 @@
-// Noor's living light: liquid brand colors with portals emerging from the logo.
+// Noor's light: flowing waves in the brand colors behind the logo's nested portals.
 // Plain script so it also runs on the look-only preview. Drives any <canvas data-noor-shader>
-// inside a [data-noor-hero] section. Add ?noorT=12 (and &noorS=0.5 for scroll) to freeze a frame.
+// inside a [data-noor-hero] section. Add ?noorT=12 to freeze a frame.
 (function () {
   var VERTEX = "attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}";
 
@@ -10,75 +10,57 @@
     "#else",
     "precision mediump float;",
     "#endif",
-    "uniform vec2 u_res;uniform float u_t;uniform float u_s;uniform vec2 u_m;uniform float u_mp;",
+    "uniform vec2 u_res;uniform float u_t;",
     "float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}",
     "float noise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);",
     " return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}",
     "float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.02+vec2(17.,9.);a*=.5;}return v;}",
     // Distance to the logo's portal shape, a pill; negative inside.
     "float pill(vec2 p,float w,float r){return length(vec2(max(abs(p.x)-w,0.),p.y))-r;}",
-    "vec2 pillNormal(vec2 p,float w){vec2 q=vec2(sign(p.x)*max(abs(p.x)-w,0.),p.y);return q/max(length(q),.0001);}",
-    // The brand's gradient, as a flowing liquid.
-    "vec3 liquid(vec2 p,float t){",
-    " vec2 q=p*.62;",
-    " vec2 w=vec2(fbm(q+vec2(0.,t*.07)),fbm(q+vec2(5.2,1.3)-t*.055));",
-    " float f=fbm(q+2.6*w+vec2(t*.03,-t*.04));",
-    " float side=smoothstep(-1.3,1.3,p.x-p.y*.9+(w.x-.5)*2.6+sin(t*.09)*.5);",
-    " vec3 pink=vec3(1.,.27,.47),coral=vec3(1.,.5,.42),lilac=vec3(.74,.62,.98);",
-    " vec3 blue=vec3(.3,.42,.95),aqua=vec3(.13,.88,.82),mint=vec3(.66,.97,.84),lime=vec3(.78,.98,.5);",
-    " vec3 warm=mix(pink,coral,smoothstep(.3,.7,w.y));",
-    " warm=mix(warm,lilac,smoothstep(.42,.72,f));",
-    " vec3 cool=mix(blue,aqua,smoothstep(.3,.62,f));",
-    " cool=mix(cool,mint,smoothstep(.55,.78,w.x));",
-    " vec3 c=mix(warm,cool,side);",
-    " c=mix(c,lilac,smoothstep(.34,.0,abs(side-.5))*.75);",
-    " c=mix(c,lime,smoothstep(.6,.76,w.y*.6+f*.55)*.75);",
-    " c=mix(c,vec3(1.,.97,.99),smoothstep(.6,.82,f+(w.y-.5)*.5)*.8);",
+    // The soft brand colors, as slow waves.
+    "vec3 waves(vec2 p,float t){",
+    " vec2 q=p*.7;",
+    " vec2 w=vec2(fbm(q+vec2(0.,t*.09)),fbm(q+vec2(5.2,1.3)-t*.075));",
+    " float f=fbm(q+3.*w+vec2(t*.04,-t*.05));",
+    " vec3 pink=vec3(1.,.373,.525),aqua=vec3(.247,.878,.835),lilac=vec3(.804,.718,.933);",
+    " vec3 sky=vec3(.576,.651,.961),white=vec3(.976,.957,.973);",
+    // Long ribbons of color rolling across the frame.
+    " float band=.5+.5*sin(p.x*1.6+p.y*2.4+f*8.5+t*.16);",
+    " float a=length(p-vec2(-1.2,-.85)+(w-.5)*2.9);",
+    " float b=length(p-vec2(1.1,.85)+(w.yx-.5)*2.9);",
+    " vec3 c=mix(lilac,sky,smoothstep(.35,.8,band)*.55);",
+    " c=mix(c,white,smoothstep(.62,.98,band)*.72);",
+    " c=mix(c,aqua,smoothstep(1.5,.25,b+(band-.5)*.5));",
+    " c=mix(c,pink,smoothstep(1.6,.25,a+(band-.5)*.5));",
     " return c;}",
     "void main(){",
-    " float m=min(u_res.x,u_res.y);",
-    " vec2 p=(gl_FragCoord.xy-.5*u_res)/m*2.;",
-    " vec2 world=p;",
-    " float portrait=u_res.x<u_res.y?1.42:1.;",
-    // Scrolling flies the camera through the gate.
-    " float s=u_s;",
-    " p*=exp(-s*s*4.2);",
-    " float base=.205*portrait;",
-    " float ratio=1.3;",
-    " vec2 disp=vec2(0.);float rim=0.,depth=0.;",
-    " float phase=u_t*.018+s*1.1;",
-    " for(int i=0;i<7;i++){",
-    "  float d=fract(float(i)/7.+phase);",
-    "  float size=base*exp(d*3.4);",
-    "  float fade=smoothstep(0.,.14,d)*smoothstep(1.,.72,d);",
-    "  float wd=size*ratio;",
-    "  float sd=pill(p,wd,size);",
-    "  float inside=smoothstep(size*.03,-size*.03,sd);",
-    "  disp+=pillNormal(p,wd)*inside*smoothstep(-size*.55,0.,sd)*.17*fade;",
-    "  rim+=fade*exp(-abs(sd)/(.03+size*.09));",
-    "  depth+=fade*(inside*.045-(1.-inside)*exp(-max(sd,0.)/(size*.3))*.16);",
+    " float aspect=u_res.x/u_res.y;",
+    " vec2 p=(gl_FragCoord.xy-.5*u_res)/u_res.y*2.;",
+    " bool tall=aspect<1.;",
+    " float ratio=tall?1.45:2.1;",
+    " float width=2.*aspect;",
+    " float widest=tall?1.32:.88,wide=tall?1.04:.62,mid=tall?.82:.4,small=tall?.64:.25;",
+    " vec2 total=vec2(0.);float glow=0.,edge=0.;",
+    " vec2 shift=vec2(0.);",
+    " for(int i=0;i<4;i++){",
+    "  float n=float(i);",
+    "  float frac=i==0?widest:i==1?wide:i==2?mid:small;",
+    // The gentle breathing from before, each portal a little out of step.
+    "  float breathe=1.+sin(u_t*.35-n*.7)*.018;",
+    "  float W=frac*width*breathe;",
+    "  float r=W/ratio*.5;",
+    "  float sd=pill(p,W*.5-r,r);",
+    "  float inside=smoothstep(.012,-.012,sd);",
+    // Each portal shows the waves from its own turning angle.
+    "  float ang=(mod(n,2.)<.5?1.:-1.)*u_t*.05+n*1.3;",
+    "  shift+=inside*vec2(cos(ang),sin(ang))*.55;",
+    "  edge+=exp(-abs(sd)/.035)*.42;",
+    "  glow+=inside*exp(sd/.09)*.2;",
     " }",
-    // The still innermost portal that holds the logo.
-    " float sd=pill(p,base*ratio,base);",
-    " float inner=smoothstep(.012,-.012,sd);",
-    " disp+=pillNormal(p,base*ratio)*inner*smoothstep(-base*.7,0.,sd)*.2;",
-    " rim+=exp(-abs(sd)/.05)*.7;",
-    " depth-=(1.-inner)*exp(-max(sd,0.)/.09)*.14;",
-    // The pointer gently stirs the light.
-    " vec2 toM=world-u_m;float near=exp(-dot(toM,toM)*2.4)*u_mp;",
-    " disp+=toM*near*.28;",
-    " vec3 c=liquid(p+disp,u_t);",
-    " c=mix(c,c*c*(3.-2.*c),.35);",
-    " c*=1.+depth;",
-    " c*=mix(1.,.86,inner);",
-    " c=mix(c,vec3(1.,.97,.99),clamp(rim*.34+near*.07,0.,.8));",
-    // Stepping through the gate: light floods out into the page.
-    " vec3 paper=vec3(.949,.949,.961);",
-    " c=mix(c,vec3(1.),smoothstep(.55,.82,s)*.85);",
-    " c=mix(c,paper,smoothstep(.8,.98,s));",
+    " vec3 c=waves(p+shift,u_t);",
+    " c=mix(c,vec3(1.),clamp(edge+glow,0.,.72));",
     // Film grain, which also prevents color banding.
-    " float g=hash(gl_FragCoord.xy*.73+fract(u_t)*41.)-.5;",
-    " c+=g*.075*(1.-smoothstep(.8,.98,s));",
+    " c+=(hash(gl_FragCoord.xy*.73+fract(u_t)*41.)-.5)*.055;",
     " gl_FragColor=vec4(c,1.);",
     "}",
   ].join("\n");
@@ -118,14 +100,10 @@
     gl.enableVertexAttribArray(position);
     gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
-    var u = {};
-    ["u_res", "u_t", "u_s", "u_m", "u_mp"].forEach(function (name) {
-      u[name] = gl.getUniformLocation(program, name);
-    });
+    var uRes = gl.getUniformLocation(program, "u_res");
+    var uTime = gl.getUniformLocation(program, "u_t");
 
-    var params = new URLSearchParams(location.search);
-    var frozenTime = params.get("noorT");
-    var frozenScroll = params.get("noorS");
+    var frozenTime = new URLSearchParams(location.search).get("noorT");
     var still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     // Render resolution falls automatically on slower devices.
@@ -139,26 +117,10 @@
       gl.viewport(0, 0, canvas.width, canvas.height);
     }
 
-    var scroll = 0;
-    var scrollTarget = 0;
-    function readScroll() {
-      var r = hero.getBoundingClientRect();
-      var range = r.height - window.innerHeight;
-      scrollTarget = range > 0 ? Math.min(1, Math.max(0, -r.top / range)) : 0;
-    }
-
-    var mouse = [0, 0];
-    var mouseTarget = [0, 0];
-    var presence = 0;
-    var presenceTarget = 0;
-    function onPointer(e) {
-      var r = canvas.getBoundingClientRect();
-      var m = Math.min(r.width, r.height);
-      mouseTarget = [((e.clientX - r.left - r.width / 2) / m) * 2, (-(e.clientY - r.top - r.height / 2) / m) * 2];
-      presenceTarget = e.pointerType === "touch" ? 0 : 1;
-    }
-    function onLeave() {
-      presenceTarget = 0;
+    function draw(time) {
+      gl.uniform2f(uRes, canvas.width, canvas.height);
+      gl.uniform1f(uTime, time);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
 
     var visible = true;
@@ -167,19 +129,6 @@
       if (visible) schedule();
     });
     observer.observe(canvas);
-
-    function draw(time) {
-      gl.uniform2f(u.u_res, canvas.width, canvas.height);
-      gl.uniform1f(u.u_t, time);
-      gl.uniform1f(u.u_s, scroll);
-      gl.uniform2f(u.u_m, mouse[0], mouse[1]);
-      gl.uniform1f(u.u_mp, presence);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-    }
-
-    function applyScroll() {
-      hero.style.setProperty("--noor-s", scroll.toFixed(4));
-    }
 
     var frame = 0;
     var running = false;
@@ -200,10 +149,8 @@
       running = false;
       if (!canvas.isConnected) return stop();
 
-      var elapsed = now - last;
-      last = now;
       // Keep a smooth frame rate by trading resolution, never by dropping motion.
-      if (elapsed > 30) slow++;
+      if (now - last > 30) slow++;
       else fast++;
       if (slow + fast >= 12) {
         if (slow > 6 && quality > 0.35) {
@@ -212,19 +159,8 @@
         }
         slow = fast = 0;
       }
-
-      // Based on elapsed time, so slower devices keep up with the scroll.
-      var seconds = Math.min(elapsed, 250) / 1000;
-      var follow = 1 - Math.exp(-seconds * 7);
-      var drift = 1 - Math.exp(-seconds * 3);
-      scroll += (scrollTarget - scroll) * follow;
-      mouse[0] += (mouseTarget[0] - mouse[0]) * drift;
-      mouse[1] += (mouseTarget[1] - mouse[1]) * drift;
-      presence += (presenceTarget - presence) * drift;
-      applyScroll();
       draw((now - startedAt) / 1000 + 40);
       window.__noorFrames = (window.__noorFrames || 0) + 1;
-      window.__noorQuality = quality;
       schedule();
     }
 
@@ -232,28 +168,18 @@
       cancelAnimationFrame(frame);
       observer.disconnect();
       removeEventListener("resize", onResize);
-      removeEventListener("scroll", onScroll);
-      removeEventListener("pointermove", onPointer);
-      document.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("visibilitychange", schedule);
       var lose = gl.getExtension("WEBGL_lose_context");
       if (lose) lose.loseContext();
     }
 
     function drawStill() {
-      readScroll();
-      scroll = frozenScroll !== null ? parseFloat(frozenScroll) : still ? 0 : scrollTarget;
-      applyScroll();
       draw(frozenTime !== null ? parseFloat(frozenTime) : 52);
     }
 
     function onResize() {
       resize();
-      readScroll();
       if (still || frozenTime !== null) drawStill();
-    }
-    function onScroll() {
-      readScroll();
     }
 
     addEventListener("resize", onResize);
@@ -264,12 +190,7 @@
       drawStill();
       return;
     }
-    addEventListener("scroll", onScroll, { passive: true });
-    addEventListener("pointermove", onPointer, { passive: true });
-    document.addEventListener("pointerleave", onLeave);
     document.addEventListener("visibilitychange", schedule);
-    readScroll();
-    scroll = scrollTarget;
     schedule();
   }
 
